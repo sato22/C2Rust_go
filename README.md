@@ -125,5 +125,22 @@ func (s *MyListener) ExitFunctionDefinition(ctx *FunctionDefinitionContext) {
 	}
 }
 
+63～
+// ExitPrimaryExpression is called when production primaryExpression is exited.
+func (s *MyListener) ExitPrimaryExpression(ctx *PrimaryExpressionContext) {
+	log.Printf("ExitPrimaryExpression %s", ctx.GetText())
+	for _, x := range s.current_decls {
+		// log.Printf("%v", x)
+		if ctx.GetText() == x.cvar.label {
+			s.current_assignment.cvar = x.cvar
+			break
+		} else {
+
+			s.current_assignment.right = ctx.GetText()
+			s.current_assignments = append(s.current_assignments, s.current_assignment)
+			break
+		}
+	}
+}
 
 ```

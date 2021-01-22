@@ -1,5 +1,10 @@
 package parser
 
+/*
+・代入文を取り扱えるようにする
+・bool値を用いずに型名をとる
+*/
+
 import (
 	// "fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -7,16 +12,17 @@ import (
 )
 
 type MyListener struct {
-	*BaseCListener        // embedded
-	current_block  []CVar // body内のCVarを格納するスライス
-	current_decl   CVar   // body内のCVar
-	current_decls  []CVarDecl
-	current_args   []CVar    // 引数（CVar）を格納するスライス
-	current_arg    CVar      // 引数(CVar)
-	current_f      CFunction // CFunction　ここにcurrent_blockとcurrent_argsの情報をいれる
-	f              bool      // trueであればCFunctionに代入
-	arg            bool      // trueであればargに代入
-	decl           bool      // trueであればbody内の変数として扱う
+	*BaseCListener                    // embedded
+	current_decls       []CVarDecl    // body内のCVarDeclを格納するスライス
+	current_decl        CVar          // body内のCVar
+	current_args        []CVar        // 引数（CVar）を格納するスライス
+	current_arg         CVar          // 引数(CVar)
+	current_assignment  CAssignment   // CAssignment 代入文
+	current_assignments []CAssignment // 代入文
+	current_f           CFunction     // CFunction　ここにcurrent_blockとcurrent_argsの情報をいれる
+	f                   bool          // trueであればCFunctionに代入
+	arg                 bool          // trueであればargに代入
+	decl                bool          // trueであればbody内の変数として扱う
 }
 
 // constructor
@@ -56,6 +62,18 @@ func (s *MyListener) EnterPrimaryExpression(ctx *PrimaryExpressionContext) {
 // ExitPrimaryExpression is called when production primaryExpression is exited.
 func (s *MyListener) ExitPrimaryExpression(ctx *PrimaryExpressionContext) {
 	log.Printf("ExitPrimaryExpression %s", ctx.GetText())
+	for _, x := range s.current_decls {
+		// log.Printf("%v", x)
+		if ctx.GetText() == x.cvar.label {
+			s.current_assignment.cvar = x.cvar
+			break
+		} else {
+
+			s.current_assignment.right = ctx.GetText()
+			s.current_assignments = append(s.current_assignments, s.current_assignment)
+			break
+		}
+	}
 }
 
 // EnterGenericSelection is called when production genericSelection is entered.
@@ -296,15 +314,13 @@ func (s *MyListener) EnterDeclaration(ctx *DeclarationContext) {
 // ExitDeclaration is called when production declaration is exited.
 func (s *MyListener) ExitDeclaration(ctx *DeclarationContext) {
 	log.Printf("ExitDeclaration %s", ctx.GetText())
-	s.current_block = append(s.current_block, s.current_decl)
-	log.Printf("---current_block is %v---", s.current_block)
 
 	s1 := CVarDecl{
 		cvar:        s.current_decl,
 		initializer: "",
 	}
 	s.current_decls = append(s.current_decls, s1)
-
+	log.Printf("---current_decls is %v---", s.current_decls)
 }
 
 // EnterDeclarationSpecifiers is called when production declarationSpecifiers is entered.
@@ -945,7 +961,7 @@ func (s *MyListener) ExitExternalDeclaration(ctx *ExternalDeclarationContext) {
 
 // EnterFunctionDefinition is called when production functionDefinition is entered.
 func (s *MyListener) EnterFunctionDefinition(ctx *FunctionDefinitionContext) {
-	log.Printf("EnterFunctionDefinition")
+	log.Printf("EnterFunctionDefinition %s", ctx.GetText())
 
 	s.f = true
 	s.arg = false
@@ -956,19 +972,17 @@ func (s *MyListener) EnterFunctionDefinition(ctx *FunctionDefinitionContext) {
 // ExitFunctionDefinition is called when production functionDefinition is exited.
 func (s *MyListener) ExitFunctionDefinition(ctx *FunctionDefinitionContext) {
 	log.Printf("ExitFunctionDefinition")
-	log.Printf("---current_block is %v, current_args is %v---", s.current_block, s.current_args)
-	/*
-		f := CFunction{
-			label:      "f",
-			args:       []CVar{a, b},
-			body:       []CStatement{&s1, &s2},
-			returntype: "int",
-		}
-	*/
+	log.Printf("---current_decls is %v, current_args is %v---", s.current_decls, s.current_args)
+
 	s.current_f.args = s.current_args
-	for _, x := range s.current_decls {
-		s.current_f.body = append(s.current_f.body, &x)
+	for index, _ := range s.current_decls {
+		// log.Printf("---current_decl is %s---", x)
+		s.current_f.body = append(s.current_f.body, &s.current_decls[index])
 	}
+	for index, _ := range s.current_assignments {
+		s.current_f.body = append(s.current_f.body, &s.current_assignments[index])
+	}
+	log.Printf("---current_statement is %v---", s.current_f.body)
 }
 
 // EnterDeclarationList is called when production declarationList is entered.

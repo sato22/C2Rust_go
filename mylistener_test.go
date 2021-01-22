@@ -1,7 +1,6 @@
 package parser
 
 import (
-	// "./c2rust"
 	"fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"testing"
@@ -9,9 +8,11 @@ import (
 
 func TestMyListener1(t *testing.T) {
 	is := antlr.NewInputStream(`
-	int f(int a, int b) {
+	f(int a, int b) {
 	       int c;
 	       int d;
+	       c = 10;
+	       c = 20;
 	}
 	`)
 	lexer := NewCLexer(is)
@@ -19,11 +20,12 @@ func TestMyListener1(t *testing.T) {
 	p := NewCParser(stream)
 	listener := NewMyListener()
 	p.AddParseListener(listener)
-	tree := p.CompilationUnit()
+	tree := p.FunctionDefinition()
 	fmt.Println(tree.ToStringTree([]string{}, p))
 
+	fmt.Println(listener.current_f) // current_fを確認
 	// antlrで作成したfunc構造体を変換して表示
-	rf := MyListener.current_f.toRust()
+	rf := listener.current_f.toRust()
 	fmt.Println("convert c to rust")
 	rf.write()
 }

@@ -17,8 +17,8 @@ type MyListener struct {
 	current_decl        CVar          // body内のCVar
 	current_args        []CVar        // 引数（CVar）を格納するスライス
 	current_arg         CVar          // 引数(CVar)
-	current_assignment  CAssignment   // CAssignment 代入文
-	current_assignments []CAssignment // 代入文
+	current_assignment  CAssignment   // CAssignment
+	current_assignments []CAssignment // CAssignment slice
 	current_f           CFunction     // CFunction　ここにcurrent_blockとcurrent_argsの情報をいれる
 	f                   bool          // trueであればCFunctionに代入
 	arg                 bool          // trueであればargに代入

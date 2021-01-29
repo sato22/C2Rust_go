@@ -1,28 +1,30 @@
-package parser
+package parsar
 
 /*
 ・代入文を取り扱えるようにする
-・bool値を用いずに型名,変数名をとる
+・bool値を用いずに型名をとる
 */
 
 import (
 	// "fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"log"
+	"strings"
 )
 
 type MyListener struct {
-	*BaseCListener                    // embedded
-	current_decls       []CVarDecl    // body内のCVarDeclを格納するスライス
-	current_decl        CVar          // body内のCVar
-	current_args        []CVar        // 引数（CVar）を格納するスライス
-	current_arg         CVar          // 引数(CVar)
-	current_assignment  CAssignment   // CAssignment
-	current_assignments []CAssignment // CAssignment slice
-	current_f           CFunction     // CFunction　ここにcurrent_blockとcurrent_argsの情報をいれる
-	f                   bool          // trueであればCFunctionに代入
-	arg                 bool          // trueであればargに代入
-	decl                bool          // trueであればbody内の変数として扱う
+	*BaseCListener                                // embedded
+	current_decls                   []CVarDecl    // body内のCVarDeclを格納するスライス
+	current_decl                    CVar          // body内のCVar
+	current_args                    []CVar        // 引数（CVar）を格納するスライス
+	current_arg                     CVar          // 引数(CVar)
+	current_assignment              CAssignment   // CAssignment 代入文
+	current_assignment_right_number bool          // assignment_rightが数字か否か
+	current_assignments             []CAssignment // 代入文
+	current_f                       CFunction     // CFunction　ここにcurrent_blockとcurrent_argsの情報をいれる
+	f                               bool          // trueであればCFunctionに代入
+	arg                             bool          // trueであればargに代入
+	decl                            bool          // trueであればbody内の変数として扱う
 }
 
 // constructor
@@ -62,18 +64,33 @@ func (s *MyListener) EnterPrimaryExpression(ctx *PrimaryExpressionContext) {
 // ExitPrimaryExpression is called when production primaryExpression is exited.
 func (s *MyListener) ExitPrimaryExpression(ctx *PrimaryExpressionContext) {
 	log.Printf("ExitPrimaryExpression %s", ctx.GetText())
+
 	for _, x := range s.current_decls {
 		// log.Printf("%v", x)
 		if ctx.GetText() == x.cvar.label {
+			log.Printf("1	s.current_assignment.cvar = %s", ctx.GetText())
 			s.current_assignment.cvar = x.cvar
+			s.current_assignment_right_number = false
 			break
 		} else {
-
+			log.Printf("2	s.current_assignment.right = %s", ctx.GetText())
 			s.current_assignment.right = ctx.GetText()
-			s.current_assignments = append(s.current_assignments, s.current_assignment)
-			break
+			s.current_assignment_right_number = true
 		}
 	}
+
+	for _, x := range s.current_decls {
+		if s.current_assignment.right == x.cvar.label {
+			log.Printf("3	s.current_assignment.right = %s, x.cvar.label = %s", s.current_assignment.right, x.cvar.label)
+			s.current_assignment_right_number = false
+		}
+	}
+
+	if s.current_assignment_right_number {
+		log.Printf("s.current_assignment = %v", s.current_assignment)
+		s.current_assignments = append(s.current_assignments, s.current_assignment)
+	}
+
 }
 
 // EnterGenericSelection is called when production genericSelection is entered.
@@ -198,12 +215,16 @@ func (s *MyListener) ExitRelationalExpression(ctx *RelationalExpressionContext) 
 
 // EnterEqualityExpression is called when production equalityExpression is entered.
 func (s *MyListener) EnterEqualityExpression(ctx *EqualityExpressionContext) {
-	log.Printf("EnterEqualityExpression")
+	log.Printf("EnterEqualityExpression %s", ctx.GetText())
+	if strings.Contains(ctx.GetText(), "==") {
+		log.Printf("contains ==")
+		s.current_assignment.operator = "=="
+	}
 }
 
 // ExitEqualityExpression is called when production equalityExpression is exited.
 func (s *MyListener) ExitEqualityExpression(ctx *EqualityExpressionContext) {
-	log.Printf("ExitEqualityExpression")
+	log.Printf("ExitEqualityExpression %s", ctx.GetText())
 }
 
 // EnterAndExpression is called when production andExpression is entered.
@@ -273,7 +294,7 @@ func (s *MyListener) EnterAssignmentExpression(ctx *AssignmentExpressionContext)
 
 // ExitAssignmentExpression is called when production assignmentExpression is exited.
 func (s *MyListener) ExitAssignmentExpression(ctx *AssignmentExpressionContext) {
-	log.Printf("ExitAssignmentExpression")
+	log.Printf("ExitAssignmentExpression %s", ctx.GetText())
 }
 
 // EnterAssignmentOperator is called when production assignmentOperator is entered.
@@ -283,7 +304,9 @@ func (s *MyListener) EnterAssignmentOperator(ctx *AssignmentOperatorContext) {
 
 // ExitAssignmentOperator is called when production assignmentOperator is exited.
 func (s *MyListener) ExitAssignmentOperator(ctx *AssignmentOperatorContext) {
-	log.Printf("ExitAssignmentOperator")
+	log.Printf("ExitAssignmentOperator %s", ctx.GetText())
+	s.current_assignment.operator = ctx.GetText()
+	log.Printf("s.current_assignment.operator = %s", ctx.GetText())
 }
 
 // EnterExpression is called when production expression is entered.
@@ -983,6 +1006,7 @@ func (s *MyListener) ExitFunctionDefinition(ctx *FunctionDefinitionContext) {
 		s.current_f.body = append(s.current_f.body, &s.current_assignments[index])
 	}
 	log.Printf("---current_statement is %v---", s.current_f.body)
+	log.Printf("s.current_assignments = %v", s.current_assignments)
 }
 
 // EnterDeclarationList is called when production declarationList is entered.

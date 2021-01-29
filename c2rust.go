@@ -1,10 +1,13 @@
-package c2rust
+package parsar
 
 import (
 	"fmt"
+	// "log"
 )
 
 var vartable map[string]string
+var rbody []RWriter
+var assignment []RWriter
 
 func init() {
 	vartable = make(map[string]string)
@@ -43,6 +46,7 @@ func (env *Env) NewVar(label string, vartype string, initializer string) {
 			used:        false,
 		}
 		env.vars[label] = v
+		// fmt.Println("env.NewVar")
 	} else {
 		fmt.Println("error")
 	}
@@ -62,7 +66,7 @@ func (env *Env) GetVar(varlabel string) (*Var, bool) {
 
 func (f *CFunction) toRust() *RFunction {
 	env := NewEnv(nil)
-	// args
+	// args/cassignment
 	args := []RVar{}
 	for _, x := range f.args {
 		v := RVar{
@@ -74,7 +78,7 @@ func (f *CFunction) toRust() *RFunction {
 	for _, s := range f.body {
 		env = s.UpdateEnv(env)
 	}
-	body := []RWriter{}
+
 	// decl block
 	for k, v := range env.vars {
 		fmt.Println(v.vartype)
@@ -87,13 +91,15 @@ func (f *CFunction) toRust() *RFunction {
 			rvar:        rv,
 			initializer: v.initializer,
 		}
-		body = append(body, s)
+		rbody = append(rbody, s)
 	}
+
 	// TODO: statements
 	return &RFunction{
 		label:      f.label,
 		args:       args,
-		body:       body,
+		body:       rbody,
+		assignment: assignment,
 		returntype: vartable[f.returntype],
 	}
 }
@@ -106,11 +112,32 @@ func (s *CVarDecl) UpdateEnv(env *Env) *Env {
 func (s *CAssignment) UpdateEnv(env *Env) *Env {
 	v, _ := env.GetVar(s.cvar.label)
 	// the right value can be evaluated?
-	if !v.used {
-		v.initializer = s.right
-		v.used = true
-	} else {
-		v.mutable = true
+	if s.operator != "==" {
+		if !v.used {
+			v.initializer = s.right
+			v.used = true
+		} else {
+			v.mutable = true
+
+			if v.label == s.cvar.label {
+				rv := RVar{
+					label:   v.label,
+					vartype: v.vartype,
+					mutable: v.mutable,
+				}
+
+				rs := &RAssignment{
+					rvar:     rv,
+					right:    s.right,
+					operator: s.operator,
+				}
+
+				assignment = append(assignment, rs)
+				fmt.Println("assignment = append")
+				fmt.Printf("assignment = %v\n", assignment)
+			}
+
+		}
 	}
 	return env
 }

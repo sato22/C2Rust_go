@@ -1,4 +1,4 @@
-package c2rust
+package parsar
 
 import (
 	"fmt"
@@ -17,14 +17,16 @@ type RVarDecl struct {
 }
 
 type RAssignment struct {
-	rvar  RVar
-	right string
+	rvar     RVar
+	right    string
+	operator string
 }
 
 type RFunction struct {
 	label      string
 	args       []RVar
 	body       []RWriter
+	assignment []RWriter
 	returntype string
 }
 
@@ -49,6 +51,9 @@ func (f *RFunction) write() {
 	for _, x := range f.body {
 		x.write()
 	}
+	for _, x := range f.assignment {
+		x.write()
+	}
 	fmt.Println("}")
 }
 
@@ -61,5 +66,10 @@ func (d *RVarDecl) write() {
 	if d.initializer != "" {
 		fmt.Printf(" = %s", d.initializer)
 	}
+	fmt.Println()
+}
+
+func (s *RAssignment) write() {
+	fmt.Printf("%s %s %s", s.rvar.label, s.operator, s.right)
 	fmt.Println()
 }

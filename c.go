@@ -1,4 +1,4 @@
-package c2rust
+package parsar
 
 import (
 // 	"fmt"
@@ -15,8 +15,9 @@ type CVarDecl struct {
 }
 
 type CAssignment struct {
-	cvar  CVar
-	right string // this should be an expr?
+	cvar     CVar
+	right    string // this should be an expr?
+	operator string
 }
 
 type CFunction struct {

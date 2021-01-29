@@ -1,4 +1,4 @@
-package parser
+package parsar
 
 import (
 	"fmt"
@@ -8,11 +8,12 @@ import (
 
 func TestMyListener1(t *testing.T) {
 	is := antlr.NewInputStream(`
-	f(int a, int b) {
-	       int c;
-	       int d;
-	       c = 10;
-	       c = 20;
+	int f(){
+        int i;
+        i = 0;
+        if (i == 1){
+        	i += 2;
+        }
 	}
 	`)
 	lexer := NewCLexer(is)
@@ -23,6 +24,7 @@ func TestMyListener1(t *testing.T) {
 	tree := p.FunctionDefinition()
 	fmt.Println(tree.ToStringTree([]string{}, p))
 
+	fmt.Println("")
 	fmt.Println(listener.current_f) // current_fを確認
 	// antlrで作成したfunc構造体を変換して表示
 	rf := listener.current_f.toRust()

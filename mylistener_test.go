@@ -1,4 +1,4 @@
-package parsar
+package parser
 
 import (
 	"fmt"
@@ -6,14 +6,16 @@ import (
 	"testing"
 )
 
+// 配列
+// 原始的な型の対応
+
+// 構造体
+
 func TestMyListener1(t *testing.T) {
 	is := antlr.NewInputStream(`
 	int f(){
-        int i;
-        i = 0;
-        if (i == 1){
-        	i += 2;
-        }
+        int a[3] = {4, 5, 6};
+		int b = 7;
 	}
 	`)
 	lexer := NewCLexer(is)

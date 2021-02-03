@@ -1,4 +1,4 @@
-package parsar
+package parser
 
 /*
 ・代入文を取り扱えるようにする
@@ -15,7 +15,7 @@ import (
 type MyListener struct {
 	*BaseCListener                                // embedded
 	current_decls                   []CVarDecl    // body内のCVarDeclを格納するスライス
-	current_decl                    CVar          // body内のCVar
+	current_decl                    CVarDecl      // body内のCVar
 	current_args                    []CVar        // 引数（CVar）を格納するスライス
 	current_arg                     CVar          // 引数(CVar)
 	current_assignment              CAssignment   // CAssignment 代入文
@@ -25,6 +25,7 @@ type MyListener struct {
 	f                               bool          // trueであればCFunctionに代入
 	arg                             bool          // trueであればargに代入
 	decl                            bool          // trueであればbody内の変数として扱う
+	array                           bool          // trueであれば配列に代入
 }
 
 // constructor
@@ -86,7 +87,7 @@ func (s *MyListener) ExitPrimaryExpression(ctx *PrimaryExpressionContext) {
 		}
 	}
 
-	if s.current_assignment_right_number {
+	if s.current_assignment_right_number && s.current_assignment.cvar.label != "" {
 		log.Printf("s.current_assignment = %v", s.current_assignment)
 		s.current_assignments = append(s.current_assignments, s.current_assignment)
 	}
@@ -338,11 +339,8 @@ func (s *MyListener) EnterDeclaration(ctx *DeclarationContext) {
 func (s *MyListener) ExitDeclaration(ctx *DeclarationContext) {
 	log.Printf("ExitDeclaration %s", ctx.GetText())
 
-	s1 := CVarDecl{
-		cvar:        s.current_decl,
-		initializer: "",
-	}
-	s.current_decls = append(s.current_decls, s1)
+	s.current_decls = append(s.current_decls, s.current_decl)
+	s.current_decl.initializer = ""
 	log.Printf("---current_decls is %v---", s.current_decls)
 }
 
@@ -389,13 +387,15 @@ func (s *MyListener) ExitInitDeclaratorList(ctx *InitDeclaratorListContext) {
 // EnterInitDeclarator is called when production initDeclarator is entered.
 func (s *MyListener) EnterInitDeclarator(ctx *InitDeclaratorContext) {
 	log.Printf("EnterInitDeclarator")
+	s.decl = true
+	log.Printf("---s.decl = true---")
 }
 
 // ExitInitDeclarator is called when production initDeclarator is exited.
 func (s *MyListener) ExitInitDeclarator(ctx *InitDeclaratorContext) {
 	log.Printf("ExitInitDeclarator %s", ctx.GetText())
-	s.current_decl.label = ctx.GetText()
-	log.Printf("---s.current_decl.label is %s---", s.current_decl.label)
+	s.decl = false
+	log.Printf("---s.decl = false---")
 }
 
 // EnterStorageClassSpecifier is called when production storageClassSpecifier is entered.
@@ -428,8 +428,8 @@ func (s *MyListener) ExitTypeSpecifier(ctx *TypeSpecifierContext) {
 	}
 
 	if s.decl {
-		s.current_decl.vartype = ctx.id.GetText()
-		log.Printf("---s.current_decl.vartype is %s---", s.current_decl.vartype)
+		s.current_decl.cvar.vartype = ctx.id.GetText()
+		log.Printf("---s.current_decl.cvar.vartype is %s---", s.current_decl.cvar.vartype)
 	}
 
 	/*
@@ -615,6 +615,9 @@ func (s *MyListener) ExitDirectDeclarator(ctx *DirectDeclaratorContext) {
 	} else if s.arg {
 		s.current_arg.label = ctx.GetText()
 		log.Printf("---s.current_arg.label is %s---", s.current_arg.label)
+	} else if s.decl {
+		s.current_decl.cvar.label = ctx.GetText()
+		log.Printf("---s.current_decl.cvar.label is %s---", s.current_decl.cvar.label)
 	}
 }
 
@@ -773,11 +776,23 @@ func (s *MyListener) ExitTypedefName(ctx *TypedefNameContext) {
 // EnterInitializer is called when production initializer is entered.
 func (s *MyListener) EnterInitializer(ctx *InitializerContext) {
 	log.Printf("EnterInitializer")
+	switch ctx.arrayordecl {
+	case 1:
+		s.array = false
+		log.Printf("---ctx.array_or_decl = %d---", ctx.arrayordecl)
+	case 2:
+		s.array = true
+		log.Printf("---ctx.array_or_decl = %d---", ctx.arrayordecl)
+	default:
+	}
+	log.Printf("---s.array = %t---", s.array)
 }
 
 // ExitInitializer is called when production initializer is exited.
 func (s *MyListener) ExitInitializer(ctx *InitializerContext) {
-	log.Printf("ExitInitializer")
+	log.Printf("ExitInitializer %s", ctx.GetText())
+	s.current_decl.initializer = ctx.GetText()
+	log.Printf("---s.current_decl.initializer = %s---", ctx.GetText())
 }
 
 // EnterInitializerList is called when production initializerList is entered.

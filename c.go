@@ -1,4 +1,4 @@
-package parsar
+package parser
 
 import (
 // 	"fmt"
@@ -15,9 +15,17 @@ type CVarDecl struct {
 }
 
 type CAssignment struct {
-	cvar     CVar
+	label    string
 	right    string // this should be an expr?
 	operator string
+}
+
+type CArray struct {
+	dim         int      // arraydim exitdirectdeclarator で case:3の際に++
+	size        []string // a[3][4] の数字部分
+	label       string   // arraylabel
+	arraytype   string
+	initializer string
 }
 
 type CFunction struct {
@@ -29,4 +37,5 @@ type CFunction struct {
 
 type CStatement interface {
 	UpdateEnv(*Env) *Env
+	AddStatement(*Env, []RWriter) []RWriter
 }

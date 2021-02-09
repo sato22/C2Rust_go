@@ -1,4 +1,4 @@
-package parsar
+package parser
 
 import (
 	"fmt"
@@ -22,11 +22,18 @@ type RAssignment struct {
 	operator string
 }
 
+type RArray struct {
+	dim         int
+	size        []string
+	label       string
+	arraytype   string
+	initializer string
+}
+
 type RFunction struct {
 	label      string
 	args       []RVar
 	body       []RWriter
-	assignment []RWriter
 	returntype string
 }
 
@@ -49,9 +56,6 @@ func (f *RFunction) write() {
 		fmt.Printf("fn %s(%s) {\n", f.label, strings.Join(argstr, ", "))
 	}
 	for _, x := range f.body {
-		x.write()
-	}
-	for _, x := range f.assignment {
 		x.write()
 	}
 	fmt.Println("}")

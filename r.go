@@ -5,34 +5,27 @@ import (
 	"strings"
 )
 
-type RVar struct {
-	label   string
-	vartype string
-	mutable bool
-}
-
 type RVarDecl struct {
-	rvar        RVar
+	label       string
+	vartype     string
+	mutable     bool
 	initializer string
+	dim         int
+	size        []string
 }
 
 type RAssignment struct {
-	rvar     RVar
+	label    string
+	vartype  string
+	mutable  bool
+	size     []string
 	right    string
 	operator string
 }
 
-type RArray struct {
-	dim         int
-	size        []string
-	label       string
-	arraytype   string
-	initializer string
-}
-
 type RFunction struct {
 	label      string
-	args       []RVar
+	args       []RVarDecl
 	body       []RWriter
 	returntype string
 }
@@ -62,18 +55,40 @@ func (f *RFunction) write() {
 }
 
 func (d *RVarDecl) write() {
-	if d.rvar.mutable {
-		fmt.Printf("let mut %s: %s", d.rvar.label, d.rvar.vartype)
+	if d.mutable {
+		fmt.Printf("let mut %s: ", d.label)
 	} else {
-		fmt.Printf("let %s: %s", d.rvar.label, d.rvar.vartype)
+		fmt.Printf("let %s: ", d.label)
 	}
+	if d.dim > 0 {
+		if len(d.size) == 2 {
+			fmt.Printf("[[%s;%s]%s]", d.vartype, d.size[0], d.size[1])
+		} else {
+			fmt.Printf("[%s;%s]", d.vartype, d.size[0])
+		}
+	} else {
+		fmt.Printf("%s", d.vartype)
+	}
+
 	if d.initializer != "" {
+		d.initializer = strings.Replace(d.initializer, "{", "[", -1)
+		d.initializer = strings.Replace(d.initializer, "}", "]", -1)
 		fmt.Printf(" = %s", d.initializer)
 	}
 	fmt.Println()
 }
 
 func (s *RAssignment) write() {
-	fmt.Printf("%s %s %s", s.rvar.label, s.operator, s.right)
+	if len(s.size) == 0 || strings.Contains(s.right, "[") {
+		fmt.Printf("%s %s %s", s.label, s.operator, s.right)
+	} else {
+		fmt.Printf("%s", s.label)
+		if len(s.size) == 2 {
+			fmt.Printf("[%s][%s]", s.size[0], s.size[1])
+		} else {
+			fmt.Printf("[%s]", s.size[0])
+		}
+		fmt.Printf(" %s %s", s.operator, s.right)
+	}
 	fmt.Println()
 }

@@ -50,7 +50,6 @@ func (env *Env) NewVar(label string, vartype string, initializer string) {
 				used:        false,
 			}
 			env.vars[label] = v
-			// fmt.Println("env.NewVar")
 		} else {
 			v := &Var{
 				label:       label,
@@ -60,7 +59,6 @@ func (env *Env) NewVar(label string, vartype string, initializer string) {
 				used:        true,
 			}
 			env.vars[label] = v
-			// fmt.Println("env.NewVar")
 		}
 	} else {
 		fmt.Println("error")
@@ -81,22 +79,33 @@ func (env *Env) GetVar(varlabel string) (*Var, bool) {
 
 func (f *CFunction) toRust() *RFunction {
 	env := NewEnv(nil)
-	// args
-	args := []RVar{}
+
+	// update env
 	for _, x := range f.args {
-		v := RVar{
-			label:   x.label,
-			vartype: vartable[x.vartype],
-		}
-		args = append(args, v)
+		env = x.UpdateEnv(env)
 	}
 	for _, s := range f.body {
 		env = s.UpdateEnv(env)
 	}
 
+	// args
+	args := []RVarDecl{}
+	for _, x := range f.args {
+		v, _ := env.GetVar(x.label)
+		arg := RVarDecl{
+			label:   v.label,
+			vartype: v.vartype,
+			mutable: false,
+		}
+		if v.used {
+			arg.mutable = true
+		}
+		args = append(args, arg)
+	}
+
 	// decl block/assignment
 	for _, s := range f.body {
-		body = s.AddStatement(env, body)
+		body = s.AddStatement(env, body, args)
 	}
 
 	// TODO: statements
@@ -109,13 +118,14 @@ func (f *CFunction) toRust() *RFunction {
 }
 
 func (s *CVarDecl) UpdateEnv(env *Env) *Env {
-	env.NewVar(s.cvar.label, s.cvar.vartype, s.initializer)
+	env.NewVar(s.label, s.vartype, s.initializer)
 	return env
 }
 
 func (s *CAssignment) UpdateEnv(env *Env) *Env {
 	v, _ := env.GetVar(s.label)
 	// the right value can be evaluated?
+
 	if !v.used {
 		v.initializer = s.right
 		v.used = true
@@ -125,42 +135,37 @@ func (s *CAssignment) UpdateEnv(env *Env) *Env {
 	return env
 }
 
-func (s *CVarDecl) AddStatement(env *Env, body []RWriter) []RWriter {
-	v, _ := env.GetVar(s.cvar.label)
+func (s *CVarDecl) AddStatement(env *Env, body []RWriter, args []RVarDecl) []RWriter {
+	v, _ := env.GetVar(s.label)
 
 	fmt.Println(v.vartype)
-	rv := RVar{
-		label:   s.cvar.label,
-		vartype: v.vartype,
-		mutable: v.mutable,
-	}
+
 	rvdecl := &RVarDecl{
-		rvar:        rv,
+		label:       s.label,
+		vartype:     v.vartype,
+		mutable:     v.mutable,
 		initializer: v.initializer,
+		dim:         s.dim,
+		size:        s.size,
 	}
 	body = append(body, rvdecl)
 
 	return body
 }
 
-func (s *CAssignment) AddStatement(env *Env, body []RWriter) []RWriter {
+func (s *CAssignment) AddStatement(env *Env, body []RWriter, args []RVarDecl) []RWriter {
 	v, _ := env.GetVar(s.label)
 
 	if s.operator != "" {
-		rv := RVar{
-			label:   v.label,
-			vartype: v.vartype,
-			mutable: v.mutable,
-		}
-
 		rs := &RAssignment{
-			rvar:     rv,
+			label:    v.label,
+			vartype:  v.vartype,
+			size:     s.size,
 			right:    s.right,
 			operator: s.operator,
 		}
 
 		body = append(body, rs)
 	}
-
 	return body
 }
